@@ -65,30 +65,38 @@ function setupAuthListeners() {
         handleSession(session);
     });
 
-    authForm.onsubmit = async (e) => {
-        e.preventDefault();
-        alert("Clic bouton détecté ! Envoi à Supabase...");
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
-        const errorEl = document.getElementById('auth-error');
-        
-        errorEl.textContent = "Connexion en cours...";
-        
-        let { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            console.error("Erreur de connexion:", error);
-            // Tentative d'inscription si compte introuvable (Pour la démo)
-            let signUp = await supabase.auth.signUp({ email, password });
-            if (signUp.error) {
-                errorEl.textContent = signUp.error.message;
-                alert("Erreur Supabase: " + signUp.error.message + "\nAssurez-vous que l'email n'a pas besoin d'être confirmé ou que le mot de passe fait plus de 6 caractères.");
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+        loginBtn.onclick = async () => {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errorEl = document.getElementById('auth-error');
+            
+            if (!email || !password) {
+                alert("Veuillez remplir l'email et le mot de passe !");
+                return;
             }
-            else {
-                errorEl.textContent = "Veuillez vérifier votre email pour confirmer.";
-                alert("Un email vous été envoyé OU vous avez bien créé le compte (si vous avez désactivé la confirmation).");
+            
+            errorEl.textContent = "Connexion au Cloud en cours...";
+            
+            try {
+                let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    console.error("Erreur de connexion:", error);
+                    let signUp = await supabase.auth.signUp({ email, password });
+                    if (signUp.error) {
+                        errorEl.textContent = signUp.error.message;
+                        alert("Erreur: " + signUp.error.message);
+                    } else {
+                        errorEl.textContent = "Veuillez vérifier votre email pour confirmer.";
+                        alert("Succès (ou attente d'e-mail).");
+                    }
+                }
+            } catch(e) {
+                alert("CRASH DE CONNEXION: " + e.message);
             }
-        }
-    };
+        };
+    }
 
     logoutBtn.onclick = async () => {
         await supabase.auth.signOut();

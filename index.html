@@ -26,17 +26,17 @@
             </div>
             <h2>Connexion Sécurisée</h2>
             <p>Veuillez vous identifier pour accéder au système cloud en temps réel.</p>
-            <form id="login-form" novalidate onsubmit="event.preventDefault(); return false;">
+            <div id="login-form">
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="auth-email" required placeholder="Ex: admin@association.com">
+                    <input type="email" id="auth-email" placeholder="Ex: admin@association.com">
                 </div>
                 <div class="form-group">
                     <label>Mot de passe</label>
-                    <input type="password" id="auth-password" required placeholder="6 caractères minimum">
+                    <input type="password" id="auth-password" placeholder="6 caractères minimum">
                 </div>
-                <button type="submit" class="btn btn-primary btn-full">Se connecter / S'inscrire</button>
-            </form>
+                <button type="button" id="login-btn" class="btn btn-primary btn-full">Se connecter / S'inscrire</button>
+            </div>
             <p id="auth-error" class="text-rose" style="margin-top:1rem; font-size:0.875rem;"></p>
         </div>
     </div>
