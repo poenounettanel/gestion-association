@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CassaManager Enterprise - Cloud</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.min.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+
+    <!-- Login Auth Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <div class="logo">
+                <i data-lucide="cloud" class="logo-icon"></i>
+                <span>Cassa<span>ENTERPRISE</span></span>
+            </div>
+            <h2>Connexion Sécurisée</h2>
+            <p>Veuillez vous identifier pour accéder au système cloud en temps réel.</p>
+            <form id="login-form" novalidate onsubmit="event.preventDefault(); return false;">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="auth-email" required placeholder="Ex: admin@association.com">
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="auth-password" required placeholder="6 caractères minimum">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Se connecter / S'inscrire</button>
+            </form>
+            <p id="auth-error" class="text-rose" style="margin-top:1rem; font-size:0.875rem;"></p>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="app-container" id="main-app" style="display:none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i data-lucide="shield-check" class="logo-icon"></i>
+                <span>Cassa<span>PRO</span></span>
+            </div>
+            <div class="cloud-status"><i data-lucide="wifi"></i> Synchronisation en temps réel active</div>
+            <nav>
+                <button class="nav-item active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i> Tableau de bord</button>
+                <button class="nav-item" data-tab="transactions"><i data-lucide="list"></i> Opérations</button>
+                <button class="nav-item" data-tab="analysis"><i data-lucide="bar-chart-3"></i> Analyse & Rapports</button>
+            </nav>
+            <div class="sidebar-user">
+                <div class="user-info">
+                    <span class="user-name" id="display-user-email">Utilisateur</span>
+                    <span class="user-role">Membre Connecté</span>
+                </div>
+                <button class="btn-icon" id="logout-btn" title="Déconnexion"><i data-lucide="log-out"></i></button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-wrapper">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="global-search" placeholder="Rechercher une référence, un libellé...">
+                </div>
+                <div class="top-actions">
+                    <button class="btn btn-outline" id="export-excel-btn">
+                        <i data-lucide="file-spreadsheet"></i> Export Vue Actuelle
+                    </button>
+                    <button class="btn btn-primary" id="add-transaction-btn">
+                        <i data-lucide="plus"></i> Nouvelle Opération
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab-content active">
+                <!-- Stats et Grilles (identiques à avant) -->
+                <div class="stats-grid">
+                    <div class="stat-card gold">
+                        <div class="stat-header">
+                            <span class="stat-label">Solde de Caisse</span>
+                            <i data-lucide="wallet" class="stat-icon"></i>
+                        </div>
+                        <div class="stat-value" id="total-balance">0 F CFA</div>
+                    </div>
+                    <div class="stat-card emerald">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Entrées</span>
+                            <i data-lucide="arrow-up-right" class="stat-icon"></i>
+                        </div>
+                        <div class="stat-value" id="total-income">0 F CFA</div>
+                    </div>
+                    <div class="stat-card rose">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Sorties</span>
+                            <i data-lucide="arrow-down-left" class="stat-icon"></i>
+                        </div>
+                        <div class="stat-value" id="total-expense">0 F CFA</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card data-card chart-section">
+                        <h2>Résumé par Catégorie</h2>
+                        <div class="category-summary-grid" id="category-summary"></div>
+                    </div>
+                    <div class="card data-card recent-section">
+                        <div class="card-header">
+                            <h2>Opérations Récentes</h2>
+                        </div>
+                        <div class="table-container">
+                            <table id="recent-table">
+                                <thead><tr><th>Date</th><th>Ref</th><th>Libellé</th><th>Montant</th></tr></thead>
+                                <tbody id="recent-transactions-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions Tab -->
+            <section id="transactions" class="tab-content">
+                <div class="card data-card">
+                    <div class="card-filters">
+                        <select id="filter-type" class="select-filter"><option value="">Tous types</option><option value="income">Entrées</option><option value="expense">Sorties</option></select>
+                        <select id="filter-category" class="select-filter"><option value="">Toutes catégories</option></select>
+                        <input type="month" id="filter-month" class="select-filter">
+                    </div>
+                    <div class="table-container">
+                        <table id="main-table">
+                            <thead><tr><th>Date</th><th>Ref</th><th>Initiateur</th><th>Catégorie</th><th>Libellé</th><th>Entrée</th><th>Sortie</th></tr></thead>
+                            <tbody id="full-transactions-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Analysis Tab -->
+            <section id="analysis" class="tab-content">
+                <div class="card manual-report-card" style="max-width: 500px; margin: 0 auto;">
+                    <h2>Générer un Rapport Word Instantané</h2>
+                    <p>Le rapport sera téléchargé directement sur votre poste (les archives ne sont pas stockées en cloud dans cette version serverless).</p>
+                    <div class="form-group" style="margin-top: 2rem;">
+                        <label>Mois sélectionné</label>
+                        <input type="month" id="report-month-gen" class="select-filter full" style="width: 100%;">
+                    </div>
+                    <button class="btn btn-primary btn-full" id="manual-generate-btn"><i data-lucide="download"></i> Télécharger le Rapport Mensuel</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Nouvelle Opération -->
+    <div id="transaction-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nouvelle Opération (Sync)</h2>
+                <button class="close-modal" id="close-modal">&times;</button>
+            </div>
+            <form id="transaction-form" class="modal-body">
+                <div class="form-group-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="t-date" required></div>
+                    <div class="form-group"><label>Réf.</label><input type="text" id="t-piece" required></div>
+                </div>
+                <div class="form-group"><label>Initiateur</label><input type="text" id="t-initiator" required></div>
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="t-type" required><option value="income">Entrée (Recette)</option><option value="expense">Sortie (Dépense)</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Catégorie</label>
+                        <input list="category-options" id="t-category" required placeholder="Chercher ou saisir...">
+                        <datalist id="category-options"></datalist>
+                    </div>
+                </div>
+                <div class="form-group"><label>Libellé</label><input type="text" id="t-desc" required></div>
+                <div class="form-group"><label>Montant</label><input type="number" id="t-amount" min="1" step="0.01" required></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Publier (Temps réel)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
